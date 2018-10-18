@@ -24,10 +24,22 @@ end
 desc "FFI compiler"
 namespace "ffi-compiler" do
   FFI::Compiler::CompileTask.new('ext/scrypt/scrypt_ext') do |t|
-    t.cflags << "-Wall -msse -msse2"
-    t.cflags << "-D_GNU_SOURCE=1" if RbConfig::CONFIG["host_os"].downcase =~ /mingw/
-    t.cflags << "-arch x86_64 -arch i386" if t.platform.mac?
-    t.ldflags << "-arch x86_64 -arch i386" if t.platform.mac?
+    target_cpu = RbConfig::CONFIG['target_cpu']
+
+    t.cflags << '-Wall -std=c99'
+    t.cflags << '-msse -msse2' if t.platform.arch.include? '86'
+    t.cflags << '-D_GNU_SOURCE=1' if RbConfig::CONFIG['host_os'].downcase =~ /mingw/
+    t.cflags << '-D_POSIX_C_SOURCE=199309L' if RbConfig::CONFIG['host_os'].downcase =~ /linux/
+
+    if 1.size == 4 && target_cpu =~ /i386|x86_32/ && t.platform.mac?
+      t.cflags << '-arch i386'
+      t.ldflags << '-arch i386'
+    elsif 1.size == 8 && target_cpu =~ /i686|x86_64/ && t.platform.mac?
+      t.cflags << '-arch x86_64'
+      t.ldflags << '-arch x86_64'
+    end
+
+    t.add_define 'WINDOWS_OS' if FFI::Platform.windows?
   end
 end
 task :compile_ffi => ["ffi-compiler:default"]
